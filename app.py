@@ -11,6 +11,8 @@ class Application(tk.Frame):
         self.boolean_values = ['True', 'true']
         self.createWidgets()
         self.master.bind('<Return>', self.addEntry)
+        self.master.bind('<Control-a>', lambda event: self.listBox.select_set(0, tk.END))
+        self.master.bind('<Delete>', self.deleteEntry)
 
     def createWidgets(self):
         self.labeltext = tk.Label(self, text='Products', width=80)
@@ -30,7 +32,7 @@ class Application(tk.Frame):
         self.deleteButton = tk.Button(self, text='Delete', command=self.deleteEntry)
         self.deleteButton.grid(column=2, row=4)
 
-    def addEntry(self, event):
+    def addEntry(self, event=None):
         if self.entryBox.get() == '':
             return
         validated_entries = self.validateEntryString(self.entryBox.get().split(','))
@@ -41,7 +43,7 @@ class Application(tk.Frame):
         self.entryBox.delete(0, tk.END)
         self.updateTotal(float(calculated_list['FinalCost']), '+')
     
-    def deleteEntry(self):
+    def deleteEntry(self, event=None):
         if self.listBox.get(tk.ACTIVE) == '':
             return
         selected_text_list = [self.listBox.get(i) for i in self.listBox.curselection()]
