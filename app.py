@@ -10,6 +10,7 @@ class Application(tk.Frame):
         self.product_type = tk.IntVar()
         self.boolean_values = ['True', 'true']
         self.createWidgets()
+        self.master.bind('<Return>', self.addEntry)
 
     def createWidgets(self):
         self.labeltext = tk.Label(self, text='Products', width=80)
@@ -29,7 +30,7 @@ class Application(tk.Frame):
         self.deleteButton = tk.Button(self, text='Delete', command=self.deleteEntry)
         self.deleteButton.grid(column=2, row=4)
 
-    def addEntry(self):
+    def addEntry(self, event):
         if self.entryBox.get() == '':
             return
         validated_entries = self.validateEntryString(self.entryBox.get().split(','))
