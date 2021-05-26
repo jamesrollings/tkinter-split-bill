@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, END, messagebox, ACTIVE
+from tkinter import ttk, messagebox, END, ACTIVE
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -18,19 +18,25 @@ class Application(tk.Frame):
         self.labeltext = tk.Label(self, text='Products', width=80)
         self.labeltext.grid(column=1, row=1)
         self.checkButtonCostco = tk.Checkbutton(self, text='Costco', onvalue=1, offvalue=0, variable=self.product_type)
-        self.checkButtonCostco.grid(column=0, row=0)
-        self.listBox = tk.Listbox(self, width=80, selectmode='multiple')
-        self.listBox.grid(column=1, row=3)
+        self.checkButtonCostco.grid(column=0, row=2)
+        self.listBoxFrame = tk.Frame(self, width=80)
+        self.listBoxFrame.grid(column=1, row=3)
+        self.listBox = tk.Listbox(self.listBoxFrame, width=80, selectmode='multiple')
+        self.listBox.pack(side=tk.LEFT, fill=tk.BOTH)
         self.labelTotal = tk.Label(self, text='£0.00', width=80)
         self.labelTotal.grid(column=1, row=4)
         self.entryBox = tk.Entry(self, width=80)
-        self.entryBox.grid(column=1, row=2)
+        self.entryBox.grid(column=1, row=2, padx=(23, 40))
         self.addButton = tk.Button(self, text='Add', default="active", command=self.addEntry)
         self.addButton.grid(column=2, row=2)
         self.duplicateButton = tk.Button(self, text='Duplicate', command=self.duplicateEntry)
         self.duplicateButton.grid(column=2, row=3)
         self.deleteButton = tk.Button(self, text='Delete', command=self.deleteEntry)
         self.deleteButton.grid(column=2, row=4)
+        self.listBoxScrollBar = tk.Scrollbar(self.listBoxFrame)
+        self.listBoxScrollBar.pack(side=tk.RIGHT, fill=tk.BOTH)
+        self.listBox.config(yscrollcommand = self.listBoxScrollBar.set)
+        self.listBoxScrollBar.config(command = self.listBox.yview)
 
     def addEntry(self, event=None):
         if self.entryBox.get() == '':
