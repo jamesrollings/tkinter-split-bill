@@ -21,7 +21,7 @@ class Application(tk.Frame):
         self.checkButtonCostco.grid(column=0, row=0)
         self.listBox = tk.Listbox(self, width=80, selectmode='multiple')
         self.listBox.grid(column=1, row=3)
-        self.labelTotal = tk.Label(self, text='£0', width=80)
+        self.labelTotal = tk.Label(self, text='£0.00', width=80)
         self.labelTotal.grid(column=1, row=4)
         self.entryBox = tk.Entry(self, width=80)
         self.entryBox.grid(column=1, row=2)
@@ -56,7 +56,7 @@ class Application(tk.Frame):
         cost_to_remove = eval(listbox_value)['FinalCost']
         idx = self.listBox.get(0, tk.END).index(listbox_value)
         self.listBox.delete(idx)
-        self.updateTotal(float(cost_to_remove), '-')
+        self.updateTotal(cost_to_remove, '-')
 
     def duplicateEntry(self):
         value = self.listBox.get(tk.ACTIVE)
@@ -66,14 +66,14 @@ class Application(tk.Frame):
         self.updateTotal(eval(value)['FinalCost'], '+')
 
     def updateTotal(self, value, operation):
-        current = float(self.labelTotal['text'][1:])
-        self.labelTotal.config(text = '£{}'.format(str(round(current + value, 2)) if operation == '+' else str(round(current - value, 2))))
+        current = float(self.labelTotal['text'][1:].replace(',', ''))
+        self.labelTotal.config(text = '£{:,.2f}'.format(round(current + value, 2) if operation == '+' else round(current - value, 2)))
     
     def validateEntryString(self, entered_value):
         checkboxValue = self.product_type.get()
         if checkboxValue == 1:
             if len(entered_value) != 4:
-                return tk.messagebox.showerror('Error', 'Value: {} is invalid'.format(entered_value))
+                return tk.messagebox.showerror('Error', 'Value: "{}" is invalid'.format(', '.join(entered_value)))
             base_array = ['Product', 'InitialCost', 'VAT', 'Split']
             entriesArray = [
                 entered_value[0],
@@ -84,7 +84,7 @@ class Application(tk.Frame):
             return list([base_array, entriesArray, checkboxValue])
         if checkboxValue == 0:
             if len(entered_value) != 3:
-                return tk.messagebox.showerror('Error', 'Value: {} is invalid'.format(entered_value))
+                return tk.messagebox.showerror('Error', 'Value: "{}" is invalid'.format(', '.join(entered_value)))
             base_array = ['Product', 'InitialCost', 'Split']
             entriesArray = [entered_value[0], float(entered_value[1]), True if entered_value[2] in self.boolean_values else False]
             return list([base_array, entriesArray, checkboxValue])
