@@ -3,51 +3,74 @@ from tkinter import ttk, messagebox, END, ACTIVE
 
 class Application(tk.Frame):
     def __init__(self, master=None):
-        tk.Frame.__init__(self, master)
+        super().__init__()
         self.grid(padx=20, pady=20)
         self.master.title('Split Bill and VAT Shopping Calculator')
         self.master.resizable(False, False)
-        self.product_type = tk.IntVar()
-        self.boolean_values = ['True', 'true']
-        self.createWidgets()
+        self.VAT = tk.IntVar()
+        self.Split = tk.IntVar()
+        self.defineWidgets()
+        self.placeWidgets()
         self.master.bind('<Return>', self.addEntry)
         self.master.bind('<Control-a>', lambda event: self.listBox.select_set(0, tk.END))
         self.master.bind('<Delete>', self.deleteEntry)
 
-    def createWidgets(self):
-        self.labeltext = tk.Label(self, text='Products', width=80)
-        self.labeltext.grid(column=1, row=1)
-        self.checkButtonCostco = tk.Checkbutton(self, text='Costco', onvalue=1, offvalue=0, variable=self.product_type)
-        self.checkButtonCostco.grid(column=0, row=2)
+    def defineWidgets(self):
         self.listBoxFrame = tk.Frame(self, width=80)
-        self.listBoxFrame.grid(column=1, row=3)
         self.listBox = tk.Listbox(self.listBoxFrame, width=80, selectmode='multiple')
-        self.listBox.pack(side=tk.LEFT, fill=tk.BOTH)
-        self.labelTotal = tk.Label(self, text='£0.00', width=80)
-        self.labelTotal.grid(column=1, row=4)
-        self.entryBox = tk.Entry(self, width=80)
-        self.entryBox.grid(column=1, row=2, padx=(23, 40))
-        self.addButton = tk.Button(self, text='Add', default="active", command=self.addEntry)
-        self.addButton.grid(column=2, row=2)
-        self.duplicateButton = tk.Button(self, text='Duplicate', command=self.duplicateEntry)
-        self.duplicateButton.grid(column=2, row=3)
-        self.deleteButton = tk.Button(self, text='Delete', command=self.deleteEntry)
-        self.deleteButton.grid(column=2, row=4)
+        self.labelTotal = tk.Label(self, text='£{:,.2f}'.format(0.00), width=80, fg='lime green', font='Helvetica 9 bold')
+        self.frameEntry = tk.Frame(self, width=80)
+        self.labelProduct = tk.Label(self.frameEntry, width=10, text='Product:')
+        self.entryProduct = tk.Entry(self.frameEntry, width=20)
+        self.labelCost = tk.Label(self.frameEntry, width=10, text='Cost:')
+        self.entryCost = tk.Entry(self.frameEntry, width=20)
+        self.radioVAT = tk.Checkbutton(self.frameEntry, width=5, text='VAT', onvalue=1, offvalue=0, variable=self.VAT)
+        self.radioSplit = tk.Checkbutton(self.frameEntry, width=5, text='Split', onvalue=1, offvalue=0, variable=self.Split)
+        self.buttonAdd = tk.Button(self, text='Add', default="active", command=self.addEntry)
+        self.buttonDuplicate = tk.Button(self, text='Duplicate', command=self.duplicateEntry)
+        self.buttonDelete = tk.Button(self, text='Delete', command=self.deleteEntry)
         self.listBoxScrollBar = tk.Scrollbar(self.listBoxFrame)
+
+    def placeWidgets(self):
+        self.listBoxFrame.grid(column=1, row=3)
+        self.listBox.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.labelTotal.grid(column=1, row=4)
+        self.frameEntry.grid(column=1, row=2)
+        self.labelProduct.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.entryProduct.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.labelCost.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.entryCost.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.radioVAT.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.radioSplit.pack(side=tk.LEFT, fill=tk.BOTH)
+        self.buttonAdd.grid(column=2, row=2)
+        self.buttonDuplicate.grid(column=2, row=3)
+        self.buttonDelete.grid(column=2, row=4)
         self.listBoxScrollBar.pack(side=tk.RIGHT, fill=tk.BOTH)
         self.listBox.config(yscrollcommand = self.listBoxScrollBar.set)
         self.listBoxScrollBar.config(command = self.listBox.yview)
 
     def addEntry(self, event=None):
-        if self.entryBox.get() == '':
+        product_name = self.entryProduct.get()
+        if product_name == '':
+            return tk.messagebox.showerror('Error', 'Product must not be empty')
+        cost = self.entryCost.get()
+        if cost == '':
+            return tk.messagebox.showerror('Error', 'Cost must not be empty')
+        try:
+            cost = float(self.entryCost.get())
+        except:
+            tk.messagebox.showerror('Error', '{} is not a valid Cost'.format(cost))
+            self.entryCost.delete(0, tk.END)
             return
-        validated_entries = self.validateEntryString(self.entryBox.get().split(','))
-        if isinstance(validated_entries, str):
-            return
-        calculated_list = self.calculate(validated_entries)
+        vat_state = True if self.VAT.get() == 1 else False
+        split_state = True if self.Split.get() == 1 else False
+        calculated_list = self.calculate([product_name, cost, vat_state, split_state])
         self.listBox.insert(tk.END, str(calculated_list))
-        self.entryBox.delete(0, tk.END)
+        self.entryProduct.delete(0, tk.END)
+        self.entryCost.delete(0, tk.END)
+        self.radioSplit.deselect()
         self.updateTotal(float(calculated_list['FinalCost']), '+')
+        self.entryProduct.focus()
     
     def deleteEntry(self, event=None):
         if self.listBox.get(tk.ACTIVE) == '':
@@ -74,29 +97,10 @@ class Application(tk.Frame):
     def updateTotal(self, value, operation):
         current = float(self.labelTotal['text'][1:].replace(',', ''))
         self.labelTotal.config(text = '£{:,.2f}'.format(round(current + value, 2) if operation == '+' else round(current - value, 2)))
-    
-    def validateEntryString(self, entered_value):
-        checkboxValue = self.product_type.get()
-        if checkboxValue == 1:
-            if len(entered_value) != 4:
-                return tk.messagebox.showerror('Error', 'Value: "{}" is invalid'.format(', '.join(entered_value)))
-            base_array = ['Product', 'InitialCost', 'VAT', 'Split']
-            entriesArray = [
-                entered_value[0],
-                float(entered_value[1]),
-                True if entered_value[2] in self.boolean_values else False,
-                True if entered_value[3] in self.boolean_values else False
-            ]
-            return list([base_array, entriesArray, checkboxValue])
-        if checkboxValue == 0:
-            if len(entered_value) != 3:
-                return tk.messagebox.showerror('Error', 'Value: "{}" is invalid'.format(', '.join(entered_value)))
-            base_array = ['Product', 'InitialCost', 'Split']
-            entriesArray = [entered_value[0], float(entered_value[1]), True if entered_value[2] in self.boolean_values else False]
-            return list([base_array, entriesArray, checkboxValue])
 
     def calculate(self, array):
-        obj = {array[0][i]: k for i, k in enumerate(array[1])}
+        base_array = ['Product', 'InitialCost', 'VAT', 'Split']
+        obj = {base_array[i]: k for i, k in enumerate(array)}
         obj['FinalCost'] = round(obj['InitialCost'] * 1.20, 2) if array[2] == 1 and bool(obj['VAT']) else obj['InitialCost']
         obj['FinalCost'] = round(obj['FinalCost'] / 2, 2) if bool(obj['Split']) else obj['FinalCost']
         return obj
