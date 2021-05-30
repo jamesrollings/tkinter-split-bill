@@ -1,5 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, END, ACTIVE
+from pymongo import MongoClient
+from bson import ObjectId
+from datetime import datetime 
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -14,6 +17,7 @@ class Application(tk.Frame):
         self.master.bind('<Return>', self.addEntry)
         self.master.bind('<Control-a>', lambda event: self.listBox.select_set(0, tk.END))
         self.master.bind('<Delete>', self.deleteEntry)
+        self.todayString = 'House_{}'.format(datetime.utcnow().strftime('%d_%m_%Y'))
 
     def defineWidgets(self):
         self.listBoxFrame = tk.Frame(self, width=80)
@@ -48,7 +52,33 @@ class Application(tk.Frame):
         self.listBoxScrollBar.pack(side=tk.RIGHT, fill=tk.BOTH)
         self.listBox.config(yscrollcommand = self.listBoxScrollBar.set)
         self.listBoxScrollBar.config(command = self.listBox.yview)
-
+    
+    def connect(self):
+        client = MongoClient('localhost', 27017)
+        db = client['HouseShopping']
+        return db['History']
+    
+    def insertOne(self, document):
+        collection = self.connect()
+        insert = collection.insert_one(document)
+        return insert.inserted_id
+    
+    def findOne(self, query):
+        collection = self.connect()
+        find = collection.find_one(query)
+        return find
+    
+    def update(self, objFilter, query):
+        collection = self.connect()
+        update = collection.update_one(objFilter, query)
+        return update
+    
+    def checkDateArrayExists(self):
+        collection = self.connect()
+        query = { self.todayString: { '$exists': True } }
+        result = self.findOne(query)
+        return result
+    
     def addEntry(self, event=None):
         product_name = self.entryProduct.get()
         if product_name == '':
@@ -65,7 +95,27 @@ class Application(tk.Frame):
         vat_state = True if self.VAT.get() == 1 else False
         split_state = True if self.Split.get() == 1 else False
         calculated_list = self.calculate([product_name, cost, vat_state, split_state])
-        self.listBox.insert(tk.END, str(calculated_list))
+        record = {
+            '_id': ObjectId(),
+            'Product': calculated_list['Product'],
+            'InitialCost': calculated_list['InitialCost'],
+            'VAT': calculated_list['VAT'],
+            'Split': calculated_list['Split'],
+            'FinalCost': calculated_list['FinalCost'],
+            'DateAdded': datetime.utcnow()
+        }
+        todayExists = self.checkDateArrayExists()
+        if todayExists != None:
+            document = self.update({ '_id': ObjectId(str(todayExists['_id'])) }, { '$push': { self.todayString: record } } )
+        else:
+            result = self.insertOne({ self.todayString: [] })
+            document = self.update({ '_id': result }, { '$push': { self.todayString: record } } )
+        listBoxString = str({
+            'Product': record['Product'],
+            'FinalCost': record['FinalCost'],
+            '_id': str(record['_id'])
+        })
+        self.listBox.insert(tk.END, listBoxString)
         self.entryProduct.delete(0, tk.END)
         self.entryCost.delete(0, tk.END)
         self.radioSplit.deselect()
@@ -80,12 +130,14 @@ class Application(tk.Frame):
             for i in selected_text_list:
                 self.listBox.delete(self.listBox.get(0, tk.END).index(i))
                 self.updateTotal(float(eval(i)['FinalCost']), '-')
+                self.update({'_id': self.checkDateArrayExists()['_id']}, { '$pull': { self.todayString : {'_id': ObjectId(eval(i)['_id'])}}} )
             return
         listbox_value = self.listBox.get(tk.ACTIVE)
         cost_to_remove = eval(listbox_value)['FinalCost']
         idx = self.listBox.get(0, tk.END).index(listbox_value)
         self.listBox.delete(idx)
         self.updateTotal(cost_to_remove, '-')
+        self.update({'_id': self.checkDateArrayExists()['_id']}, { '$pull': { self.todayString : {'_id': ObjectId(eval(listbox_value)['_id'])}}} )
 
     def duplicateEntry(self):
         value = self.listBox.get(tk.ACTIVE)
