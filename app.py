@@ -18,6 +18,7 @@ class Application(tk.Frame):
         self.master.bind('<Control-a>', lambda event: self.listBox.select_set(0, tk.END))
         self.master.bind('<Delete>', self.deleteEntry)
         self.todayString = 'House_{}'.format(datetime.utcnow().strftime('%d_%m_%Y'))
+        self.saveToDB = True
 
     def defineWidgets(self):
         self.listBoxFrame = tk.Frame(self, width=80)
@@ -106,10 +107,12 @@ class Application(tk.Frame):
         }
         todayExists = self.checkDateArrayExists()
         if todayExists != None:
-            document = self.update({ '_id': ObjectId(str(todayExists['_id'])) }, { '$push': { self.todayString: record } } )
+            if self.saveToDB:
+                document = self.update({ '_id': ObjectId(str(todayExists['_id'])) }, { '$push': { self.todayString: record } } )
         else:
-            result = self.insertOne({ self.todayString: [] })
-            document = self.update({ '_id': result }, { '$push': { self.todayString: record } } )
+            if self.saveToDB:
+                result = self.insertOne({ self.todayString: [] })
+                document = self.update({ '_id': result }, { '$push': { self.todayString: record } } )
         listBoxString = str({
             'Product': record['Product'],
             'FinalCost': record['FinalCost'],
@@ -130,14 +133,16 @@ class Application(tk.Frame):
             for i in selected_text_list:
                 self.listBox.delete(self.listBox.get(0, tk.END).index(i))
                 self.updateTotal(float(eval(i)['FinalCost']), '-')
-                self.update({'_id': self.checkDateArrayExists()['_id']}, { '$pull': { self.todayString : {'_id': ObjectId(eval(i)['_id'])}}} )
+                if self.saveToDB:
+                    self.update({'_id': self.checkDateArrayExists()['_id']}, { '$pull': { self.todayString : {'_id': ObjectId(eval(i)['_id'])}}} )
             return
         listbox_value = self.listBox.get(tk.ACTIVE)
         cost_to_remove = eval(listbox_value)['FinalCost']
         idx = self.listBox.get(0, tk.END).index(listbox_value)
         self.listBox.delete(idx)
         self.updateTotal(cost_to_remove, '-')
-        self.update({'_id': self.checkDateArrayExists()['_id']}, { '$pull': { self.todayString : {'_id': ObjectId(eval(listbox_value)['_id'])}}} )
+        if self.saveToDB:
+            self.update({'_id': self.checkDateArrayExists()['_id']}, { '$pull': { self.todayString : {'_id': ObjectId(eval(listbox_value)['_id'])}}} )
 
     def duplicateEntry(self):
         value = self.listBox.get(tk.ACTIVE)
@@ -154,7 +159,8 @@ class Application(tk.Frame):
         })
         self.listBox.insert(tk.END, listBoxString)
         self.updateTotal(element['FinalCost'], '+')
-        self.update({'_id': self.checkDateArrayExists()['_id']}, { '$push': { self.todayString: element }} )
+        if self.saveToDB:
+            self.update({'_id': self.checkDateArrayExists()['_id']}, { '$push': { self.todayString: element }} )
 
     def updateTotal(self, value, operation):
         current = float(self.labelTotal['text'][1:].replace(',', ''))
