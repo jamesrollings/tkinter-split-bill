@@ -143,8 +143,18 @@ class Application(tk.Frame):
         value = self.listBox.get(tk.ACTIVE)
         if value == '':
             return
-        self.listBox.insert(tk.END, value)
-        self.updateTotal(eval(value)['FinalCost'], '+')
+        objValue = self.findOne({ self.todayString: { '$elemMatch': {'_id': ObjectId(eval(value)['_id']) } } } )[self.todayString]
+        element = list(filter(lambda x: str(x['_id']) == eval(value)['_id'], objValue))[0]
+        element['_id'] = ObjectId()
+        element['DateAdded'] = datetime.utcnow()
+        listBoxString = str({
+            'Product': element['Product'],
+            'FinalCost': element['FinalCost'],
+            '_id': str(element['_id'])
+        })
+        self.listBox.insert(tk.END, listBoxString)
+        self.updateTotal(element['FinalCost'], '+')
+        self.update({'_id': self.checkDateArrayExists()['_id']}, { '$push': { self.todayString: element }} )
 
     def updateTotal(self, value, operation):
         current = float(self.labelTotal['text'][1:].replace(',', ''))
