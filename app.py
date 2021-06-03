@@ -7,6 +7,7 @@ from datetime import datetime
 class Application(tk.Frame):
     def __init__(self, master=None):
         super().__init__()
+        self.db = self.connect()
         self.grid(padx=20, pady=20)
         self.master.title('Split Bill and VAT Shopping Calculator')
         self.master.resizable(False, False)
@@ -60,22 +61,18 @@ class Application(tk.Frame):
         return db['History']
     
     def insertOne(self, document):
-        collection = self.connect()
-        insert = collection.insert_one(document)
+        insert = self.db.insert_one(document)
         return insert.inserted_id
     
     def findOne(self, query):
-        collection = self.connect()
-        find = collection.find_one(query)
+        find = self.db.find_one(query)
         return find
     
     def update(self, objFilter, query):
-        collection = self.connect()
-        update = collection.update_one(objFilter, query)
+        update = self.db.update_one(objFilter, query)
         return update
     
     def checkDateArrayExists(self):
-        collection = self.connect()
         query = { self.todayString: { '$exists': True } }
         result = self.findOne(query)
         return result
