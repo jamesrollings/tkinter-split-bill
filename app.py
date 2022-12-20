@@ -1,9 +1,9 @@
-# pylint: disable=unused-import, cell-var-from-loop, attribute-defined-outside-init, line-too-long
+# pylint: disable=cell-var-from-loop, attribute-defined-outside-init, line-too-long
 """ App to calculate shopping costs """
 import tkinter as tk
-from tkinter import ttk, messagebox, END, ACTIVE, filedialog, IntVar, StringVar
+from tkinter import messagebox, END, ACTIVE, filedialog, IntVar, StringVar
 from datetime import datetime
-import ast
+from ast import literal_eval
 
 class Application(tk.Frame):
     """ Main application class """
@@ -29,7 +29,6 @@ class Application(tk.Frame):
         self.operation_text.set('Add')
         self.operation.set(0)
         self.selection_is_highlighted = False
-        self.today_string = 'House_{}'.format(datetime.utcnow().strftime('%d_%m_%Y'))
 
     def define_widgets(self):
         """ Creates the widgets """
@@ -44,7 +43,7 @@ class Application(tk.Frame):
         self.radio_vat = tk.Checkbutton(self.frame_entry, width=5, text='VAT', onvalue=1, offvalue=0, variable=self.vat_amount)
         self.radio_split = tk.Checkbutton(self.frame_entry, width=5, text='Split', onvalue=1, offvalue=0, variable=self.split_selected)
         self.button_add = tk.Button(self, textvariable=self.operation_text, default="active", command=self.add_entry)
-        self.button_duplicate = tk.Button(self, text='Duplicate', command=self.duplicate_entry)
+        self.button_duplicate = tk.Button(self, text='Duplicate', command=self.duplicate_entry, state='disabled')
         self.button_delete = tk.Button(self, text='Delete', command=self.delete_entry)
         self.list_box_scroll_bar = tk.Scrollbar(self.list_box_frame)
         self.button_export = tk.Button(self, text='Export', command=self.save_as)
@@ -77,6 +76,11 @@ class Application(tk.Frame):
         self.master.bind('<Control-a>', self.toggle_select_box_highlighting)
         self.master.bind('<Delete>', self.delete_entry)
         self.master.bind('<Control-v>', self.paste_from_clipboard)
+        self.list_box.bind('<<ListboxSelect>>', self.on_select)
+
+    def on_select(self, evt):
+        """ handles selecting inside the listbox, enables the duplicate button if a row has been selected """
+        self.button_duplicate.config(state='normal' if len(evt.widget.curselection()) == 1 else 'disabled')
 
     def set_operation_text(self):
         """ Sets the operation text for adding or subtracting the entered product value """
@@ -102,8 +106,8 @@ class Application(tk.Frame):
             messagebox.showerror('Error', '{} is not a valid Cost'.format(cost))
             self.entry_cost.delete(0, END)
             return
-        vat_state = True if self.vat_amount.get() == 1 else False
-        split_state = True if self.split_selected.get() == 1 else False
+        vat_state = self.vat_amount.get() == 1
+        split_state = self.split_selected.get() == 1
         calculated_list = self.calculate([product_name, cost, vat_state, split_state])
         self.item_id = self.item_id + 1
         record = {
@@ -139,11 +143,11 @@ class Application(tk.Frame):
         if len(selected_text_list) > 1:
             for i in selected_text_list:
                 self.list_box.delete(self.list_box.get(0, END).index(i))
-                self.update_total(float(ast.literal_eval(i)['FinalCost']), '-')
-                self.items = list(filter(lambda x: x['ItemID'] != ast.literal_eval(i)['ItemID'], self.items))
+                self.update_total(float(literal_eval(i)['FinalCost']), '-')
+                self.items = list(filter(lambda x: x['ItemID'] != literal_eval(i)['ItemID'], self.items))
             return
         listbox_value = self.list_box.get(ACTIVE)
-        cost_to_remove = ast.literal_eval(listbox_value)['FinalCost']
+        cost_to_remove = literal_eval(listbox_value)['FinalCost']
         idx = self.list_box.get(0, END).index(listbox_value)
         self.list_box.delete(idx)
         self.update_total(cost_to_remove, '-')
@@ -153,7 +157,7 @@ class Application(tk.Frame):
         value = self.list_box.get(ACTIVE)
         if value == '':
             return
-        original_item_id = ast.literal_eval(value)['ItemID']
+        original_item_id = literal_eval(value)['ItemID']
         copied_entry = self.items[list(x['ItemID'] == original_item_id for x in self.items).index(True)]
         copied_entry = copied_entry.copy()
         self.item_id = self.item_id + 1
@@ -189,7 +193,7 @@ class Application(tk.Frame):
     @staticmethod
     def format_entry(entry):
         """ returns a string of a formatted entry """
-        entry = ast.literal_eval(entry)
+        entry = literal_eval(entry)
         return 'ItemID: {}, Product: {}, Cost: {}\n'.format(entry['ItemID'], entry['Product'], entry['FinalCost'])
 
     def save_as(self):
